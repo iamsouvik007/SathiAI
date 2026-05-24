@@ -27,10 +27,10 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.example.sathiai.BuildConfig
 import com.example.sathiai.network.ChatRequest
 import com.example.sathiai.network.Message
 import com.example.sathiai.network.RetrofitInstance
-import com.example.sathiai.network.Secrets
 import com.example.sathiai.services.ScreenAnalyzer
 import com.example.sathiai.services.ScreenReaderService
 import com.example.sathiai.ui.components.PremiumOverlayUI
@@ -377,6 +377,18 @@ class OverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStat
         val userMsg = Message(role = "user", content = userMessage)
         chatHistory.add(userMsg)
         isThinkingState.value = true
+
+        val apiKey = BuildConfig.GROQ_API_KEY
+        if (apiKey.isBlank()) {
+            chatHistory.add(
+                Message(
+                    role = "assistant",
+                    content = "Error: Missing GROQ_API_KEY (set it in local.properties or env)"
+                )
+            )
+            isThinkingState.value = false
+            return
+        }
         
         serviceScope.launch {
             try {
@@ -385,7 +397,7 @@ class OverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStat
                     messages = chatHistory.toList()
                 )
                 val response = RetrofitInstance.api.sendMessage(
-                    token = "Bearer ${Secrets.GROQ_API_KEY}",
+                    token = "Bearer $apiKey",
                     request = request
                 )
                 val reply = response.choices.firstOrNull()?.message?.content?.toString() ?: "No response"

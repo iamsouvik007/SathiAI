@@ -123,6 +123,26 @@ Using AccessibilityService:
 * Groq API
 * Llama 3.3 70B
 
+---
+
+# 🔑 API Keys (No Secrets in Git)
+
+This project reads API keys from `local.properties` (recommended for local dev) or from environment variables in CI.
+
+Add the following to your root `local.properties` (do NOT commit it):
+
+```properties
+GROQ_API_KEY=your_groq_key_here
+NVIDIA_API_KEY=your_nvidia_key_here
+```
+
+Or set environment variables:
+
+- `GROQ_API_KEY`
+- `NVIDIA_API_KEY`
+
+These values are exposed to the app via `BuildConfig.GROQ_API_KEY` and `BuildConfig.NVIDIA_API_KEY`.
+
 ## Android Services
 
 * AccessibilityService

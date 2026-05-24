@@ -1,5 +1,6 @@
 package com.example.sathiai.data.local
 
+import com.example.sathiai.BuildConfig
 import com.example.sathiai.ai.AiTone
 import com.example.sathiai.ai.PersonalityManager
 import com.example.sathiai.network.*
@@ -72,9 +73,22 @@ class ChatRepository(private val dao: ChatDao) {
 
         val model = if (imageBase64 != null) "llama-3.2-11b-vision-preview" else "llama-3.3-70b-versatile"
 
+        val apiKey = BuildConfig.GROQ_API_KEY
+        if (apiKey.isBlank()) {
+            val errorMsg = "Error: Missing GROQ_API_KEY (set it in local.properties or env)"
+            dao.insertMessage(
+                MessageEntity(
+                    conversationId = conversationId,
+                    text = errorMsg,
+                    isUser = false
+                )
+            )
+            return errorMsg
+        }
+
         return try {
             val response = RetrofitInstance.api.sendMessage(
-                token = "Bearer ${Secrets.GROQ_API_KEY}",
+                token = "Bearer $apiKey",
                 request = ChatRequest(model = model, messages = apiMessages)
             )
             val aiReply = response.choices.firstOrNull()?.message?.content?.toString() ?: "No response"

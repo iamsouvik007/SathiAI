@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Android Studio (2025+) generated project cache dirs
+/app.*/
+/projects.*/
+/sathiai.*/

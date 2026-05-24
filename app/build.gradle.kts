@@ -1,7 +1,29 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.devtools.ksp)
+}
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+
+fun secretValue(name: String): String {
+    return System.getenv(name)
+        ?: (project.findProperty(name) as String?)
+        ?: localProperties.getProperty(name)
+        ?: ""
+}
+
+fun buildConfigString(value: String): String {
+    val escaped = value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+    return "\"$escaped\""
 }
 
 android {
@@ -16,6 +38,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "GROQ_API_KEY", buildConfigString(secretValue("GROQ_API_KEY")))
+        buildConfigField("String", "NVIDIA_API_KEY", buildConfigString(secretValue("NVIDIA_API_KEY")))
     }
 
     buildTypes {
