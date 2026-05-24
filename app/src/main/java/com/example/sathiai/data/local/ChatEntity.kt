@@ -3,20 +3,22 @@ package com.example.sathiai.data.local
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(
-    tableName = "chat_messages"
+@Entity(tableName = "conversations")
+data class ConversationEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val title: String,
+    val isPinned: Boolean = false,
+    val lastTimestamp: Long = System.currentTimeMillis()
 )
 
-data class ChatEntity(
-
+@Entity(tableName = "chat_messages")
+data class MessageEntity(
     @PrimaryKey(autoGenerate = true)
-
-    val id: Int = 0,
-
-    val message: String,
-
+    val id: Long = 0,
+    val conversationId: Long,
+    val text: String,
     val isUser: Boolean,
-
-    val timestamp: Long =
-        System.currentTimeMillis()
+    val imageUrl: String? = null,
+    val timestamp: Long = System.currentTimeMillis()
 )

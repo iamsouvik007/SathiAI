@@ -4,26 +4,38 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ChatDao {
 
-    @Insert(
-        onConflict =
-            OnConflictStrategy.REPLACE
-    )
-    suspend fun insertMessage(
-        chat: ChatEntity
-    )
+    // Conversations
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertConversation(conversation: ConversationEntity): Long
 
-    @Query(
-        "SELECT * FROM chat_messages ORDER BY timestamp ASC"
-    )
-    suspend fun getAllMessages():
-            List<ChatEntity>
+    @Query("SELECT * FROM conversations ORDER BY isPinned DESC, lastTimestamp DESC")
+    fun getAllConversations(): Flow<List<ConversationEntity>>
 
-    @Query(
-        "DELETE FROM chat_messages"
-    )
-    suspend fun clearChat()
+    @Update
+    suspend fun updateConversation(conversation: ConversationEntity)
+
+    @Query("UPDATE conversations SET isPinned = :isPinned WHERE id = :conversationId")
+    suspend fun updatePinnedStatus(conversationId: Long, isPinned: Boolean)
+
+    @Query("DELETE FROM conversations WHERE id = :conversationId")
+    suspend fun deleteConversation(conversationId: Long)
+
+    @Query("DELETE FROM chat_messages WHERE conversationId = :conversationId")
+    suspend fun deleteMessagesForConversation(conversationId: Long)
+
+    // Messages
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMessage(message: MessageEntity)
+
+    @Query("SELECT * FROM chat_messages WHERE conversationId = :conversationId ORDER BY timestamp ASC")
+    fun getMessagesForConversation(conversationId: Long): Flow<List<MessageEntity>>
+
+    @Query("SELECT * FROM chat_messages WHERE conversationId = :conversationId ORDER BY timestamp DESC LIMIT 1")
+    suspend fun getLastMessageForConversation(conversationId: Long): MessageEntity?
 }

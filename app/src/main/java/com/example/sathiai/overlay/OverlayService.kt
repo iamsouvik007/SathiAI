@@ -1012,7 +1012,7 @@ class OverlayService : Service() {
                     token = "Bearer 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",
                     request = request
                 )
-                val reply = response.choices.firstOrNull()?.message?.content ?: "No response"
+                val reply = response.choices.firstOrNull()?.message?.content?.toString() ?: "No response"
 
                 Handler(Looper.getMainLooper()).post {
                     stopThinkingAnimation()

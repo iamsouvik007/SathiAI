@@ -1,86 +1,62 @@
-# Fix remaining errors in ChatScreen.kt and ChatViewModel.kt
+# Voice Recognition & Chat Management Plan
 
-The previous fix addressed the `viewModel()` unresolved reference, but further analysis and code review revealed more issues:
-1.  Missing `androidx.compose.material:material-icons-core` dependency for `Icons.Filled.Send`.
-2.  Missing `isTyping` property in `ChatViewModel`.
-3.  Redundant coroutine scope usage in `ChatScreen.kt`.
-4.  Potential issues with `animateScrollToItem` in `LaunchedEffect`.
+Implement professional Voice-to-Text input and advanced chat history features (pin/delete) while maintaining the existing overlay quickball UI.
 
 ## Proposed Changes
 
-### Build Configuration
+### 1. Permissions & Manifest
 
-#### [libs.versions.toml](file:///C:/Users/souvi/AppData/Local/Google/AndroidStudio2025.3.4/projects/gradle/libs.versions.toml)
-
-- Add `androidx-compose-material-icons-core` to the `[libraries]` section.
-
-```toml
-androidx-compose-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core" }
-```
-
-#### [build.gradle.kts (app)](file:///C:/Users/souvi/AppData/Local/Google/AndroidStudio2025.3.4/projects/app/build.gradle.kts)
-
-- Add the `androidx.compose.material.icons.core` dependency.
-
-```kotlin
-implementation(libs.androidx.compose.material.icons.core)
-```
+#### [AndroidManifest.xml](file:///C:/Users/souvi/AppData/Local/Google/AndroidStudio2025.3.4/projects/app/src/main/AndroidManifest.xml)
+- Add `android.permission.RECORD_AUDIO`.
 
 ---
 
-### UI & ViewModel
+### 2. Voice Recognition Engine
+
+#### [NEW] [VoiceRecognizerManager.kt](file:///C:/Users/souvi/AppData/Local/Google/AndroidStudio2025.3.4/projects/app/src/main/java/com/example/sathiai/voice/VoiceRecognizerManager.kt)
+- Wrapper around `SpeechRecognizer`.
+- Handles lifecycle, partial results, errors, and silence detection.
+- Provides a `Flow<VoiceState>` for the ViewModel.
+
+---
+
+### 3. Data Layer Enhancements
+
+#### [ChatEntity.kt](file:///C:/Users/souvi/AppData/Local/Google/AndroidStudio2025.3.4/projects/app/src/main/java/com/example/sathiai/data/local/ChatEntity.kt)
+- Add `isPinned: Boolean = false` to `ConversationEntity`.
+
+#### [ChatDao.kt](file:///C:/Users/souvi/AppData/Local/Google/AndroidStudio2025.3.4/projects/app/src/main/java/com/example/sathiai/data/local/ChatDao.kt)
+- Add `updatePinnedStatus(id, pinned)`.
+- Update `getAllConversations()` query to order by `isPinned DESC, lastTimestamp DESC`.
+
+---
+
+### 4. ViewModel Integration
 
 #### [ChatViewModel.kt](file:///C:/Users/souvi/AppData/Local/Google/AndroidStudio2025.3.4/projects/app/src/main/java/com/example/sathiai/chat/ChatViewModel.kt)
+- Integrate `VoiceRecognizerManager`.
+- Add `togglePinConversation(id)`.
+- Expose `sttText` and `isListening` states.
 
-- Add `isTyping` state.
-- Update `sendMessage` to simulate typing delay.
+---
 
-```kotlin
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-
-class ChatViewModel : ViewModel() {
-    var isTyping by mutableStateOf(false)
-        private set
-
-    // ...
-    fun sendMessage(text: String) {
-        // ...
-        viewModelScope.launch {
-            isTyping = true
-            delay(1500)
-            fakeAiReply(text)
-            isTyping = false
-        }
-    }
-}
-```
+### 5. UI Components
 
 #### [ChatScreen.kt](file:///C:/Users/souvi/AppData/Local/Google/AndroidStudio2025.3.4/projects/app/src/main/java/com/example/sathiai/chat/ChatScreen.kt)
+- **Voice Button**: Add animated Mic icon with Pulse animation.
+- **Permission Handler**: Use `rememberPermissionState`.
+- **History Drawer**: Add long-press or trailing icons for Delete/Pin on `NavigationDrawerItem`.
 
-- Remove `coroutineScope.launch` inside `LaunchedEffect`.
-- Add safety check for `lastIndex`.
-
-```kotlin
-    LaunchedEffect(viewModel.messages.size) {
-        if (viewModel.messages.isNotEmpty()) {
-            listState.animateScrollToItem(viewModel.messages.lastIndex)
-        }
-    }
-```
+---
 
 ## Verification Plan
 
 ### Automated Tests
-- Run `analyze_file` on `ChatScreen.kt` and `ChatViewModel.kt`.
-- Run `gradlew :app:assembleDebug`.
+- Build verification: `gradlew :app:assembleDebug`.
+- Static analysis: `analyze_file` on new components.
 
 ### Manual Verification
-- Deploy to device and verify:
-    - Sending messages scrolls the list.
-    - "AI is typing..." indicator appears briefly before reply.
-    - Send icon is correctly displayed.
+1. **STT Flow**: Tap Mic, speak, verify text populates input field in real-time. Verify timeout/silence handling.
+2. **Permission Flow**: Deny mic permission, verify graceful error message. Grant permission, verify it starts listening.
+3. **History Management**: Pin a chat, verify it moves to top. Delete a chat, verify it disappears from DB.
+4. **Consistency**: Ensure Overlay remains visually unchanged.

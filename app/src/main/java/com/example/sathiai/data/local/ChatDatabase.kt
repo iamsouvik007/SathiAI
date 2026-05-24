@@ -6,44 +6,28 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-
-    entities = [ChatEntity::class],
-
-    version = 1,
-
+    entities = [ConversationEntity::class, MessageEntity::class],
+    version = 3,
     exportSchema = false
 )
+abstract class ChatDatabase : RoomDatabase() {
 
-abstract class ChatDatabase :
-    RoomDatabase() {
-
-    abstract fun chatDao():
-            ChatDao
+    abstract fun chatDao(): ChatDao
 
     companion object {
-
         @Volatile
-        private var INSTANCE:
-                ChatDatabase? = null
+        private var INSTANCE: ChatDatabase? = null
 
-        fun getDatabase(
-            context: Context
-        ): ChatDatabase {
-
+        fun getDatabase(context: Context): ChatDatabase {
             return INSTANCE ?: synchronized(this) {
-
-                val instance =
-                    Room.databaseBuilder(
-
-                        context.applicationContext,
-
-                        ChatDatabase::class.java,
-
-                        "chat_database"
-                    ).build()
-
+                val instance = Room.databaseBuilder(
+                    context.applicationContext,
+                    ChatDatabase::class.java,
+                    "chat_database"
+                )
+                .fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
-
                 instance
             }
         }

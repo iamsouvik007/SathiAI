@@ -1,12 +1,18 @@
-# Tasks
+# SathiAI Voice & Chat Management Upgrade
 
-- [x] Identify error in `ChatScreen.kt`
-    - [x] Analyze `ChatScreen.kt` for potential issues
-    - [x] Check for existence of `MessageBubble` and `ChatViewModel`
-- [x] Create implementation plan
-- [x] Fix the error
-    - [x] Add dependency to `libs.versions.toml`
-    - [x] Add dependency to `build.gradle.kts`
-    - [x] Fix trailing comma in `ChatScreen.kt`
-- [x] Verify the fix
-    - [x] Run `analyze_file` on `ChatScreen.kt`
+- [/] Voice Recognition Integration
+    - [ ] Create `VoiceRecognizerManager` with `SpeechRecognizer`
+    - [ ] Add `RECORD_AUDIO` permission to `AndroidManifest.xml`
+    - [ ] Implement `VoiceState` management in `ChatViewModel`
+- [ ] Chat History Enhancements
+    - [ ] Update `ConversationEntity` with `isPinned` field
+    - [ ] Update `ChatDao` with pin/delete/rename methods
+    - [ ] Implement UI for Pin/Delete actions in History Drawer
+- [ ] Premium UI/UX Implementation
+    - [ ] Add animated Microphone button with listening glow/waveform
+    - [ ] Implement Permission handling for Microphone
+    - [ ] Add Swipe-to-Action or Context Menu for chat history items
+- [ ] Final Verification
+    - [ ] Test STT in different network conditions
+    - [ ] Verify persistence of pinned chats
+    - [ ] Ensure overlay service remains untouched
