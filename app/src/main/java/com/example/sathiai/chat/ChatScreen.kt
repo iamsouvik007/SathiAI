@@ -34,11 +34,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
 import com.example.sathiai.ai.AiTone
 import com.example.sathiai.ui.components.*
 import com.example.sathiai.ui.theme.*
-import com.example.sathiai.vision.VisionUtils
 import com.example.sathiai.voice.VoiceState
 import kotlinx.coroutines.launch
 
@@ -62,10 +60,6 @@ fun ChatScreen() {
         if (viewModel.sttText.isNotEmpty()) inputText = viewModel.sttText
     }
     
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { viewModel.selectedImageBase64 = VisionUtils.uriToBase64(context, it) }
-    }
-
     val micPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) viewModel.startListening()
     }
@@ -169,7 +163,7 @@ fun ChatScreen() {
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 100.dp, top = 16.dp)
+                            contentPadding = PaddingValues(bottom = 140.dp, top = 16.dp)
                         ) {
                             items(messages) { msg ->
                                 MessageBubble(msg)
@@ -191,16 +185,13 @@ fun ChatScreen() {
                             onTextChange = { inputText = it },
                             selectedTone = viewModel.selectedTone,
                             onToneChange = { viewModel.selectedTone = it },
-                            selectedImage = viewModel.selectedImageBase64,
-                            onPickImage = { imagePicker.launch("image/*") },
-                            onClearImage = { viewModel.selectedImageBase64 = null },
                             voiceState = voiceState,
                             onMicClick = {
                                 if (voiceState is VoiceState.Listening) viewModel.stopListening()
                                 else micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                             },
                             onSend = {
-                                if (inputText.isNotBlank() || viewModel.selectedImageBase64 != null) {
+                                if (inputText.isNotBlank()) {
                                     viewModel.sendMessage(inputText)
                                     inputText = ""
                                 }
@@ -288,9 +279,6 @@ fun PremiumInputBar(
     onTextChange: (String) -> Unit,
     selectedTone: AiTone,
     onToneChange: (AiTone) -> Unit,
-    selectedImage: String?,
-    onPickImage: () -> Unit,
-    onClearImage: () -> Unit,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
     onSend: () -> Unit
@@ -308,32 +296,10 @@ fun PremiumInputBar(
             modifier = Modifier.padding(bottom = 8.dp).fillMaxWidth(0.9f).align(Alignment.CenterHorizontally)
         )
         
-        // Image Preview if attached
-        if (selectedImage != null) {
-            Box(modifier = Modifier.padding(start = 12.dp, bottom = 8.dp)) {
-                AsyncImage(
-                    model = selectedImage,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Crop
-                )
-                IconButton(
-                    onClick = onClearImage,
-                    modifier = Modifier.size(20.dp).align(Alignment.TopEnd).background(Color.Black.copy(0.5f), CircleShape)
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
-                }
-            }
-        }
-
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 4.dp)
         ) {
-            IconButton(onClick = onPickImage) {
-                Icon(Icons.Default.CameraAlt, contentDescription = null, tint = TextSecondary)
-            }
-            
             IconButton(onClick = onMicClick) {
                 val isListening = voiceState is VoiceState.Listening
                 Icon(

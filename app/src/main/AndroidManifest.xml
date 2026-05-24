@@ -16,6 +16,10 @@
     <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Camera -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <!-- Voice Recording -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
@@ -77,6 +81,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".camera.CameraActivity"
+            android:theme="@style/Theme.SathiAI"
+            android:screenOrientation="portrait"
+            android:exported="false" />
 
     </application>
 

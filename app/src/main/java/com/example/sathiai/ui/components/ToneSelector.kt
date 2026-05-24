@@ -29,10 +29,11 @@ fun ToneSelector(
 ) {
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(24.dp))
-            .background(SurfaceGlass)
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+            .height(36.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(SurfaceGlass.copy(alpha = 0.6f))
+            .padding(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         AiTone.entries.forEach { tone ->
             val isSelected = selectedTone == tone
@@ -44,18 +45,20 @@ fun ToneSelector(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(20.dp))
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(16.dp))
                     .background(if (isSelected) AccentPrimary else Color.Transparent)
                     .clickable { onToneSelected(tone) }
-                    .padding(vertical = 8.dp),
+                    .padding(horizontal = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = tone.displayName,
                     style = MaterialTheme.typography.labelMedium.copy(
                         color = contentColor,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 12.sp
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.sp
                     )
                 )
             }

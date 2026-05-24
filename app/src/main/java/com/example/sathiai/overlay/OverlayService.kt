@@ -43,14 +43,21 @@ class OverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStat
 
     private lateinit var windowManager: WindowManager
     private lateinit var bubbleView: FrameLayout
+    private var closeZoneView: FrameLayout? = null
     private var overlayComposeView: ComposeView? = null
     
+    // Position state for anchoring and draggability
+    private var lastBubbleX = 20
+    private var lastBubbleY = 400
+    private var lastPopupX = -1
+    private var lastPopupY = -1
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
     // ── Compose States ────────────────────────────────────────────────────────
-    private var responseTextState = mutableStateOf("")
     private var isThinkingState = mutableStateOf(false)
     private var inputTextState = mutableStateOf("")
+    private val chatHistory = mutableStateListOf<Message>()
 
     // ── Lifecycle Support ─────────────────────────────────────────────────────
     private val lifecycleRegistry = LifecycleRegistry(this)
@@ -75,6 +82,7 @@ class OverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStat
         startForeground(NOTIFICATION_ID, buildNotification())
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         createBubble()
+        createCloseZone()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -89,6 +97,7 @@ class OverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStat
         if (::bubbleView.isInitialized) {
             try { windowManager.removeView(bubbleView) } catch (_: Exception) {}
         }
+        closeZoneView?.let { try { windowManager.removeView(it) } catch (_: Exception) {} }
         hideOverlay()
     }
 
@@ -118,48 +127,76 @@ class OverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStat
     }
 
     private fun createBubble() {
-        // Reuse existing bubble logic from user's code for consistency
-        // (Assuming existing bubble design is preserved as per instructions)
         bubbleView = FrameLayout(this)
         val bubble = android.widget.TextView(this).apply {
-            text = "✦"; textSize = 22f; gravity = android.view.Gravity.CENTER
+            text = "✦"; textSize = 20f; gravity = android.view.Gravity.CENTER
             setTextColor(android.graphics.Color.WHITE)
             val gd = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.OVAL
                 colors = intArrayOf(android.graphics.Color.parseColor("#7B61FF"), android.graphics.Color.parseColor("#4A3FA0"))
             }
-            background = gd; elevation = 24f
-            layoutParams = FrameLayout.LayoutParams(140, 140).apply { gravity = android.view.Gravity.CENTER }
+            background = gd; elevation = 16f
+            layoutParams = FrameLayout.LayoutParams(120, 120).apply { gravity = android.view.Gravity.CENTER }
         }
         bubbleView.addView(bubble)
 
         val params = WindowManager.LayoutParams(
-            170, 170,
+            140, 140,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = 80; y = 320
+            x = 20; y = 400
         }
 
         windowManager.addView(bubbleView, params)
         
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val screenHeight = displayMetrics.heightPixels
+
         var initialX = 0; var initialY = 0; var touchX = 0f; var touchY = 0f; var isDragging = false
+        
         bubbleView.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    initialX = params.x; initialY = params.y; touchX = event.rawX; touchY = event.rawY; isDragging = false; true
+                    initialX = params.x; initialY = params.y; touchX = event.rawX; touchY = event.rawY; isDragging = false
+                    showCloseZone()
+                    true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (event.rawX - touchX).toInt(); val dy = (event.rawY - touchY).toInt()
                     if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-                        isDragging = true; params.x = initialX + dx; params.y = initialY + dy
-                        windowManager.updateViewLayout(bubbleView, params); true
+                        isDragging = true
+                        params.x = initialX + dx; params.y = initialY + dy
+                        windowManager.updateViewLayout(bubbleView, params)
+                        
+                        // Check if over close zone
+                        val overClose = params.y > screenHeight * 0.8 && Math.abs(params.x - screenWidth/2 + 70) < 150
+                        updateCloseZoneState(overClose)
+                        true
                     } else true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (!isDragging) toggleOverlay()
+                    hideCloseZone()
+                    if (isDragging) {
+                        // Magnetic Snap to Edges
+                        val targetX = if (params.x + 70 < screenWidth / 2) 20 else screenWidth - 160
+                        
+                        // Check for dismissal
+                        if (params.y > screenHeight * 0.8 && Math.abs(params.x - screenWidth/2 + 70) < 150) {
+                            stopSelf()
+                        } else {
+                            lastBubbleX = targetX
+                            lastBubbleY = params.y
+                            animateSnap(params, targetX)
+                        }
+                    } else {
+                        lastBubbleX = params.x
+                        lastBubbleY = params.y
+                        toggleOverlay()
+                    }
                     true
                 }
                 else -> false
@@ -167,11 +204,76 @@ class OverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStat
         }
     }
 
+    private fun animateSnap(params: WindowManager.LayoutParams, targetX: Int) {
+        val startX = params.x
+        val duration = 300L
+        val startTime = System.currentTimeMillis()
+        
+        serviceScope.launch {
+            while (System.currentTimeMillis() - startTime < duration) {
+                val progress = (System.currentTimeMillis() - startTime).toFloat() / duration
+                params.x = (startX + (targetX - startX) * progress).toInt()
+                try { windowManager.updateViewLayout(bubbleView, params) } catch (_: Exception) {}
+                kotlinx.coroutines.delay(16)
+            }
+            params.x = targetX
+            try { windowManager.updateViewLayout(bubbleView, params) } catch (_: Exception) {}
+        }
+    }
+
+    private fun createCloseZone() {
+        closeZoneView = FrameLayout(this).apply {
+            visibility = View.GONE
+            val circle = android.view.View(this@OverlayService).apply {
+                val gd = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.OVAL
+                    setColor(android.graphics.Color.parseColor("#44FF0000"))
+                    setStroke(2, android.graphics.Color.RED)
+                }
+                background = gd
+                layoutParams = FrameLayout.LayoutParams(160, 160).apply { gravity = Gravity.CENTER }
+            }
+            val icon = android.widget.ImageView(this@OverlayService).apply {
+                setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+                setColorFilter(android.graphics.Color.WHITE)
+                layoutParams = FrameLayout.LayoutParams(60, 60).apply { gravity = Gravity.CENTER }
+            }
+            addView(circle)
+            addView(icon)
+        }
+
+        val params = WindowManager.LayoutParams(
+            200, 200,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+            y = 100
+        }
+        windowManager.addView(closeZoneView, params)
+    }
+
+    private fun showCloseZone() { closeZoneView?.visibility = View.VISIBLE }
+    private fun hideCloseZone() { closeZoneView?.visibility = View.GONE }
+    private fun updateCloseZoneState(active: Boolean) {
+        closeZoneView?.getChildAt(0)?.scaleX = if (active) 1.5f else 1.0f
+        closeZoneView?.getChildAt(0)?.scaleY = if (active) 1.5f else 1.0f
+    }
+
     private fun toggleOverlay() {
         if (overlayComposeView == null) showOverlay() else hideOverlay()
     }
 
     private fun showOverlay() {
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val screenHeight = displayMetrics.heightPixels
+        
+        // Compact Popup Dimensions
+        val popupWidth = (screenWidth * 0.75f).toInt()
+        val popupHeight = (screenHeight * 0.45f).toInt()
+
         overlayComposeView = ComposeView(this).apply {
             setViewTreeLifecycleOwner(this@OverlayService)
             setViewTreeViewModelStoreOwner(this@OverlayService)
@@ -179,12 +281,12 @@ class OverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStat
             
             setContent {
                 PremiumOverlayUI(
-                    responseText = responseTextState.value,
+                    messages = chatHistory,
                     isThinking = isThinkingState.value,
                     inputText = inputTextState.value,
                     onInputChanged = { inputTextState.value = it },
                     onAnalyzeScreen = { analyzeScreen() },
-                    onClear = { responseTextState.value = "" },
+                    onClear = { chatHistory.clear() },
                     onSend = { 
                         val msg = inputTextState.value
                         if (msg.isNotBlank()) {
@@ -197,15 +299,63 @@ class OverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStat
             }
         }
 
+        // Adaptive Positioning Logic
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            1500, // Fixed high quality height
+            popupWidth,
+            popupHeight,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.CENTER }
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            
+            if (lastPopupX != -1) {
+                x = lastPopupX
+                y = lastPopupY
+            } else {
+                // Initial Anchoring: Open away from edges
+                x = if (lastBubbleX < screenWidth / 2) {
+                    lastBubbleX + 150 // Open to the right of bubble
+                } else {
+                    lastBubbleX - popupWidth - 10 // Open to the left of bubble
+                }
+                
+                y = if (lastBubbleY < screenHeight / 2) {
+                    lastBubbleY // Align top with bubble
+                } else {
+                    lastBubbleY - popupHeight + 140 // Align bottom with bubble
+                }
+                
+                // Edge constraints
+                x = x.coerceIn(20, screenWidth - popupWidth - 20)
+                y = y.coerceIn(50, screenHeight - popupHeight - 100)
+            }
+            
+            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+            windowAnimations = android.R.style.Animation_Dialog // Basic animation for now
+        }
 
         windowManager.addView(overlayComposeView, params)
+        
+        // Draggable Popup Logic
+        var initialX = 0; var initialY = 0; var touchX = 0f; var touchY = 0f
+        overlayComposeView?.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialX = params.x; initialY = params.y; touchX = event.rawX; touchY = event.rawY; true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = (event.rawX - touchX).toInt(); val dy = (event.rawY - touchY).toInt()
+                    params.x = (initialX + dx).coerceIn(0, screenWidth - popupWidth)
+                    params.y = (initialY + dy).coerceIn(0, screenHeight - popupHeight)
+                    lastPopupX = params.x
+                    lastPopupY = params.y
+                    try { windowManager.updateViewLayout(overlayComposeView, params) } catch (_: Exception) {}
+                    true
+                }
+                else -> false
+            }
+        }
     }
 
     private fun hideOverlay() {
@@ -223,21 +373,24 @@ class OverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStat
     }
 
     private fun askGroq(userMessage: String) {
+        val userMsg = Message(role = "user", content = userMessage)
+        chatHistory.add(userMsg)
         isThinkingState.value = true
+        
         serviceScope.launch {
             try {
                 val request = ChatRequest(
                     model = "llama-3.3-70b-versatile",
-                    messages = listOf(Message(role = "user", content = userMessage))
+                    messages = chatHistory.toList()
                 )
                 val response = RetrofitInstance.api.sendMessage(
-                    token = "Bearer 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",
+                    token = "Bearer YOUR_API_KEY",
                     request = request
                 )
                 val reply = response.choices.firstOrNull()?.message?.content?.toString() ?: "No response"
-                responseTextState.value = reply
+                chatHistory.add(Message(role = "assistant", content = reply))
             } catch (e: Exception) {
-                responseTextState.value = "Error: ${e.message}"
+                chatHistory.add(Message(role = "assistant", content = "Error: ${e.message}"))
             } finally {
                 isThinkingState.value = false
             }
