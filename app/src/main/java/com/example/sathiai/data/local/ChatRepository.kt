@@ -74,7 +74,7 @@ class ChatRepository(private val dao: ChatDao) {
 
         return try {
             val response = RetrofitInstance.api.sendMessage(
-                token = "Bearer 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",
+                token = "Bearer ${Secrets.GROQ_API_KEY}",
                 request = ChatRequest(model = model, messages = apiMessages)
             )
             val aiReply = response.choices.firstOrNull()?.message?.content?.toString() ?: "No response"
