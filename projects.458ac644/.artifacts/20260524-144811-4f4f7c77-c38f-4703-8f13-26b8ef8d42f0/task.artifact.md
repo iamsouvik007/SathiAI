@@ -1,18 +1,18 @@
-# SathiAI Voice & Chat Management Upgrade
+# SathiAI Premium Redesign Tasks
 
-- [/] Voice Recognition Integration
-    - [ ] Create `VoiceRecognizerManager` with `SpeechRecognizer`
-    - [ ] Add `RECORD_AUDIO` permission to `AndroidManifest.xml`
-    - [ ] Implement `VoiceState` management in `ChatViewModel`
-- [ ] Chat History Enhancements
-    - [ ] Update `ConversationEntity` with `isPinned` field
-    - [ ] Update `ChatDao` with pin/delete/rename methods
-    - [ ] Implement UI for Pin/Delete actions in History Drawer
-- [ ] Premium UI/UX Implementation
-    - [ ] Add animated Microphone button with listening glow/waveform
-    - [ ] Implement Permission handling for Microphone
-    - [ ] Add Swipe-to-Action or Context Menu for chat history items
-- [ ] Final Verification
-    - [ ] Test STT in different network conditions
-    - [ ] Verify persistence of pinned chats
-    - [ ] Ensure overlay service remains untouched
+- [/] Foundation & Theme
+    - [ ] Create `SathiTheme.kt` with premium color palette and typography
+    - [ ] Implement `Glassmorphism.kt` utility modifiers
+- [ ] Main Chat Screen Redesign
+    - [ ] Create `AICenterpiece.kt` (Abstract animated AI wave/orb)
+    - [ ] Implement `ToneSelector.kt` (Premium animated segmented control)
+    - [ ] Redesign `SuggestionChips.kt` into glass cards
+    - [ ] Upgrade `ChatInputBar.kt` to a floating glass design
+    - [ ] Refactor `ChatScreen.kt` to integrate new components
+- [ ] Overlay Popup Redesign
+    - [ ] Restructure `OverlayPopupUI.kt` (Input at bottom, Header at top)
+    - [ ] Create icon-based premium controls for Analyze/Clear
+    - [ ] Implement blur and glass effect for overlay window
+- [ ] Verification & Polish
+    - [ ] Verify animations and transitions
+    - [ ] Ensure `OverlayService` remains untouched regarding the orb itself

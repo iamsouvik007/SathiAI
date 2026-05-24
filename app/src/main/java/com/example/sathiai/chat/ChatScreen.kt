@@ -23,74 +23,24 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.sathiai.ai.AiTone
+import com.example.sathiai.ui.components.*
+import com.example.sathiai.ui.theme.*
 import com.example.sathiai.vision.VisionUtils
 import com.example.sathiai.voice.VoiceState
 import kotlinx.coroutines.launch
-
-// ─── Colour Palette ────────────────────────────────────────────────────────────
-private val BgDeep        = Color(0xFF080B14)
-private val BgCard        = Color(0xFF0F1320)
-private val BgSurface     = Color(0xFF151929)
-private val BgInput       = Color(0xFF1A1F30)
-private val AccentPrimary = Color(0xFF7B61FF)
-private val AccentSecond  = Color(0xFF4E9FFF)
-private val AccentGlow    = Color(0x337B61FF)
-private val TextPrimary   = Color(0xFFF0F2FF)
-private val TextSecondary = Color(0xFF8891B0)
-private val TextMuted     = Color(0xFF4A5070)
-private val Divider       = Color(0xFF1E2438)
-private val ChipBorder    = Color(0xFF252B3F)
-
-// ─── Glow elevation helper ─────────────────────────────────────────────────────
-fun Modifier.coloredShadow(
-    color: Color,
-    borderRadius: Dp = 0.dp,
-    blurRadius: Dp = 20.dp,
-    offsetX: Dp = 0.dp,
-    offsetY: Dp = 4.dp
-) = this.drawBehind {
-    drawIntoCanvas { canvas ->
-        val paint = Paint().apply {
-            asFrameworkPaint().apply {
-                isAntiAlias = true
-                this.color = android.graphics.Color.TRANSPARENT
-                setShadowLayer(
-                    blurRadius.toPx(),
-                    offsetX.toPx(),
-                    offsetY.toPx(),
-                    color.copy(alpha = 0.45f).toArgb()
-                )
-            }
-        }
-        canvas.drawRoundRect(
-            left = 0f, top = 0f,
-            right = size.width, bottom = size.height,
-            radiusX = borderRadius.toPx(), radiusY = borderRadius.toPx(),
-            paint = paint
-        )
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,281 +51,125 @@ fun ChatScreen() {
     val conversations  by viewModel.conversations.collectAsState()
     val isTyping       = viewModel.isTyping
     val voiceState     by viewModel.voiceState.collectAsState()
-
+    
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope       = rememberCoroutineScope()
     val listState   = rememberLazyListState()
 
     var inputText by remember { mutableStateOf("") }
 
-    // Sync STT text to input field
     LaunchedEffect(viewModel.sttText) {
-        if (viewModel.sttText.isNotEmpty()) {
-            inputText = viewModel.sttText
-        }
+        if (viewModel.sttText.isNotEmpty()) inputText = viewModel.sttText
     }
-
-    val imagePicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
+    
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { viewModel.selectedImageBase64 = VisionUtils.uriToBase64(context, it) }
     }
 
-    val micPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            viewModel.startListening()
-        }
+    val micPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) viewModel.startListening()
     }
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        scrimColor = Color(0x99000000),
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = BgCard,
-                drawerContentColor = TextPrimary,
-                modifier = Modifier.width(300.dp)
-            ) {
-                // Drawer Header
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(AccentPrimary.copy(0.15f), Color.Transparent)
-                            )
-                        )
-                        .padding(horizontal = 20.dp, vertical = 24.dp)
+    SathiTheme {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet(
+                    drawerContainerColor = MidnightBlue,
+                    drawerContentColor = TextPrimary,
+                    modifier = Modifier.width(300.dp)
                 ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .background(
-                                        Brush.radialGradient(
-                                            listOf(AccentPrimary, AccentSecond)
-                                        ),
-                                        CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("S", color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
-                            }
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                "SathiAI",
-                                color = TextPrimary,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 20.sp,
-                                letterSpacing = 1.sp
-                            )
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "Your conversations",
-                            color = TextSecondary,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-
-                HorizontalDivider(color = Divider, thickness = 0.5.dp)
-
-                // Conversation list
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(vertical = 8.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                ) {
-                    items(conversations) { conv ->
-                        val isSelected = conv.id == viewModel.currentConversationId
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 3.dp)
-                                .then(
-                                    if (isSelected) Modifier.background(
-                                        Brush.horizontalGradient(
-                                            listOf(AccentPrimary.copy(0.2f), Color.Transparent)
-                                        ),
-                                        RoundedCornerShape(12.dp)
-                                    ).border(
-                                        0.5.dp,
-                                        AccentPrimary.copy(0.4f),
-                                        RoundedCornerShape(12.dp)
-                                    )
-                                    else Modifier
-                                )
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "History",
+                        modifier = Modifier.padding(24.dp),
+                        style = SathiTypography.titleLarge
+                    )
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
+                    
+                    LazyColumn(modifier = Modifier.weight(1f)) {
+                        items(conversations) { conv ->
+                            NavigationDrawerItem(
+                                label = { Text(conv.title, maxLines = 1) },
+                                selected = conv.id == viewModel.currentConversationId,
+                                onClick = {
                                     viewModel.selectConversation(conv.id)
                                     scope.launch { drawerState.close() }
-                                }
-                                .padding(horizontal = 14.dp, vertical = 12.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    if (conv.isPinned) Icons.Default.PushPin else Icons.Default.ChatBubbleOutline,
-                                    contentDescription = null,
-                                    tint = if (isSelected) AccentPrimary else if (conv.isPinned) AccentPrimary.copy(0.7f) else TextMuted,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                                Spacer(Modifier.width(10.dp))
-                                Text(
-                                    conv.title,
-                                    maxLines = 1,
-                                    color = if (isSelected) TextPrimary else TextSecondary,
-                                    fontSize = 14.sp,
-                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                
-                                // Pin/Delete actions
-                                IconButton(onClick = { viewModel.togglePinConversation(conv.id, conv.isPinned) }, modifier = Modifier.size(20.dp)) {
-                                    Icon(
-                                        Icons.Default.PushPin,
-                                        contentDescription = "Pin",
-                                        tint = if (conv.isPinned) AccentPrimary else TextMuted.copy(0.4f),
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-                                Spacer(Modifier.width(4.dp))
-                                IconButton(onClick = { viewModel.deleteConversation(conv.id) }, modifier = Modifier.size(20.dp)) {
-                                    Icon(
-                                        Icons.Default.DeleteOutline,
-                                        contentDescription = "Delete",
-                                        tint = TextMuted.copy(0.4f),
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-                            }
+                                },
+                                badge = {
+                                    Row {
+                                        IconButton(onClick = { viewModel.togglePinConversation(conv.id, conv.isPinned) }) {
+                                            Icon(
+                                                Icons.Default.PushPin,
+                                                contentDescription = null,
+                                                tint = if (conv.isPinned) AccentPrimary else TextMuted,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                        IconButton(onClick = { viewModel.deleteConversation(conv.id) }) {
+                                            Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                },
+                                colors = NavigationDrawerItemDefaults.colors(
+                                    unselectedContainerColor = Color.Transparent,
+                                    selectedContainerColor = Color.White.copy(alpha = 0.05f)
+                                ),
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                            )
                         }
                     }
-                }
-
-                HorizontalDivider(color = Divider, thickness = 0.5.dp)
-
-                // New Chat Button
-                Box(modifier = Modifier.padding(16.dp)) {
-                    Button(
-                        onClick = { viewModel.createNewConversation() },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .coloredShadow(AccentPrimary, 24.dp, 16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                        contentPadding = PaddingValues(0.dp),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.horizontalGradient(
-                                        listOf(AccentPrimary, AccentSecond)
-                                    ),
-                                    RoundedCornerShape(14.dp)
-                                ),
-                            contentAlignment = Alignment.Center
+                    
+                    Box(modifier = Modifier.padding(20.dp)) {
+                        Button(
+                            onClick = { viewModel.createNewConversation() },
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentPrimary),
+                            shape = RoundedCornerShape(16.dp)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    "New Conversation",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp
-                                )
-                            }
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("New Chat", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
-        }
-    ) {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(28.dp)
-                                    .background(
-                                        Brush.radialGradient(
-                                            listOf(AccentPrimary, AccentSecond)
-                                        ),
-                                        CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("S", color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp)
-                            }
-                            Spacer(Modifier.width(8.dp))
+        ) {
+            Scaffold(
+                topBar = {
+                    CenterAlignedTopAppBar(
+                        title = {
                             Text(
                                 "SathiAI",
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 18.sp,
-                                letterSpacing = 1.5.sp,
-                                color = TextPrimary
+                                style = SathiTypography.titleLarge,
+                                letterSpacing = 2.sp
                             )
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(
-                                Icons.Default.Menu,
-                                contentDescription = "Menu",
-                                tint = TextSecondary
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { viewModel.createNewConversation() }) {
-                            Icon(
-                                Icons.Default.EditNote,
-                                contentDescription = "New chat",
-                                tint = TextSecondary
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = BgDeep,
-                        titleContentColor = TextPrimary,
-                        navigationIconContentColor = TextSecondary
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = null, tint = TextSecondary)
+                            }
+                        },
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                            containerColor = DeepBlack,
+                            titleContentColor = TextPrimary
+                        )
                     )
-                )
-            },
-            containerColor = BgDeep
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize()
-            ) {
-                // Subtle separator line under top bar
-                HorizontalDivider(color = Divider, thickness = 0.5.dp)
-
-                // Messages Area
-                Box(modifier = Modifier.weight(1f)) {
+                },
+                containerColor = DeepBlack
+            ) { padding ->
+                Box(modifier = Modifier.padding(padding).fillMaxSize()) {
                     if (messages.isEmpty()) {
-                        WelcomeSection()
+                        HeroSection()
                     } else {
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp)
+                            contentPadding = PaddingValues(bottom = 100.dp, top = 16.dp)
                         ) {
                             items(messages) { msg ->
                                 MessageBubble(msg)
@@ -385,200 +179,111 @@ fun ChatScreen() {
                             }
                         }
                     }
-                }
 
-                // Input Area
-                ChatInputBar(
-                    text = inputText,
-                    onTextChange = { inputText = it },
-                    selectedTone = viewModel.selectedTone,
-                    onToneChange = { viewModel.selectedTone = it },
-                    selectedImage = viewModel.selectedImageBase64,
-                    onPickImage = { imagePicker.launch("image/*") },
-                    onClearImage = { viewModel.selectedImageBase64 = null },
-                    voiceState = voiceState,
-                    onMicClick = {
-                        if (voiceState is VoiceState.Listening || voiceState is VoiceState.PartialResult) {
-                            viewModel.stopListening()
-                        } else {
-                            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                        }
-                    },
-                    onSend = {
-                        if (inputText.isNotBlank() || viewModel.selectedImageBase64 != null) {
-                            viewModel.sendMessage(inputText)
-                            inputText = ""
-                        }
-                    }
-                )
-            }
-        }
-    }
-}
-
-// ─── Welcome ──────────────────────────────────────────────────────────────────
-@Composable
-fun WelcomeSection() {
-    val infiniteTransition = rememberInfiniteTransition(label = "glow")
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.65f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowAlpha"
-    )
-
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        // Background glow blob
-        Box(
-            modifier = Modifier
-                .size(260.dp)
-                .background(
-                    Brush.radialGradient(
-                        listOf(
-                            AccentPrimary.copy(alpha = glowAlpha * 0.25f),
-                            Color.Transparent
-                        )
-                    ),
-                    CircleShape
-                )
-        )
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            // Avatar
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(AccentPrimary.copy(0.3f), AccentSecond.copy(0.15f))
-                        ),
-                        CircleShape
-                    )
-                    .border(1.dp, AccentPrimary.copy(0.4f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("S", color = AccentPrimary, fontWeight = FontWeight.Black, fontSize = 32.sp)
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            Text(
-                "Hello, I'm Sathi 👋",
-                color = TextPrimary,
-                fontWeight = FontWeight.Bold,
-                fontSize = 22.sp
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "Your personal AI companion.\nAsk me anything.",
-                color = TextSecondary,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 20.sp
-            )
-
-            Spacer(Modifier.height(32.dp))
-
-            // Suggestion chips
-            val suggestions = listOf("Write a poem", "Explain AI", "Help me plan")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                suggestions.forEach { suggestion ->
-                    SuggestionChip(
-                        label = suggestion,
-                        onClick = { /* could pre-fill the input */ }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun SuggestionChip(label: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .border(0.5.dp, ChipBorder, RoundedCornerShape(20.dp))
-            .background(BgSurface)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-    ) {
-        Text(label, color = TextSecondary, fontSize = 12.sp)
-    }
-}
-
-// ─── Typing Indicator ─────────────────────────────────────────────────────────
-@Composable
-fun TypingIndicator() {
-    val dotCount = 3
-    val infiniteTransition = rememberInfiniteTransition(label = "typing")
-    val dots = (0 until dotCount).map { i ->
-        infiniteTransition.animateFloat(
-            initialValue = 0.3f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(500, delayMillis = i * 150, easing = EaseInOutSine),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "dot$i"
-        )
-    }
-
-    Row(
-        modifier = Modifier
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .padding(start = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start
-    ) {
-        // Small avatar dot
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .background(BgSurface, CircleShape)
-                .border(0.5.dp, ChipBorder, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("S", color = AccentPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-
-        Spacer(Modifier.width(10.dp))
-
-        Box(
-            modifier = Modifier
-                .background(BgSurface, RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp))
-                .border(0.5.dp, ChipBorder, RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp))
-                .padding(horizontal = 16.dp, vertical = 14.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                dots.forEach { dot ->
+                    // Floating Input Area
                     Box(
                         modifier = Modifier
-                            .size(7.dp)
-                            .scale(dot.value)
-                            .background(AccentPrimary.copy(alpha = dot.value), CircleShape)
-                    )
+                            .align(Alignment.BottomCenter)
+                            .padding(horizontal = 16.dp, vertical = 24.dp)
+                    ) {
+                        PremiumInputBar(
+                            text = inputText,
+                            onTextChange = { inputText = it },
+                            selectedTone = viewModel.selectedTone,
+                            onToneChange = { viewModel.selectedTone = it },
+                            selectedImage = viewModel.selectedImageBase64,
+                            onPickImage = { imagePicker.launch("image/*") },
+                            onClearImage = { viewModel.selectedImageBase64 = null },
+                            voiceState = voiceState,
+                            onMicClick = {
+                                if (voiceState is VoiceState.Listening) viewModel.stopListening()
+                                else micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            },
+                            onSend = {
+                                if (inputText.isNotBlank() || viewModel.selectedImageBase64 != null) {
+                                    viewModel.sendMessage(inputText)
+                                    inputText = ""
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-// ─── Input Bar ────────────────────────────────────────────────────────────────
 @Composable
-fun ChatInputBar(
+fun HeroSection() {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(bottom = 80.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        AICenterpiece()
+        Spacer(modifier = Modifier.height(32.dp))
+        Text(
+            "Hello, I'm Sathi 👋",
+            style = SathiTypography.headlineLarge
+        )
+        Text(
+            "Your futuristic AI companion.\nHow can I help you today?",
+            style = SathiTypography.bodyLarge,
+            color = TextSecondary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        
+        Spacer(modifier = Modifier.height(48.dp))
+        
+        // Suggestion Grid
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            SuggestionGlassCard("Explain\nQuantum", Modifier.weight(1f))
+            SuggestionGlassCard("Plan a\nTrip", Modifier.weight(1f))
+            SuggestionGlassCard("Write a\nStory", Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+fun SuggestionGlassCard(label: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .premiumGlass(RoundedCornerShape(20.dp))
+            .clickable { }
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            label,
+            style = SathiTypography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            textAlign = TextAlign.Center,
+            lineHeight = 18.sp
+        )
+    }
+}
+
+@Composable
+fun TypingIndicator() {
+    Row(
+        modifier = Modifier.padding(24.dp, 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(AccentPrimary, CircleShape)
+        )
+        Spacer(Modifier.width(12.dp))
+        Text("Sathi is thinking...", style = SathiTypography.labelSmall)
+    }
+}
+
+@Composable
+fun PremiumInputBar(
     text: String,
     onTextChange: (String) -> Unit,
     selectedTone: AiTone,
@@ -590,233 +295,80 @@ fun ChatInputBar(
     onMicClick: () -> Unit,
     onSend: () -> Unit
 ) {
-    val canSend = text.isNotBlank() || selectedImage != null
-    val isListening = voiceState is VoiceState.Listening || voiceState is VoiceState.PartialResult
-
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val micScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.35f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "micScale"
-    )
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(BgDeep)
+            .premiumGlass(RoundedCornerShape(32.dp))
+            .padding(8.dp)
     ) {
-        HorizontalDivider(color = Divider, thickness = 0.5.dp)
+        // Tone Segmented Control
+        ToneSelector(
+            selectedTone = selectedTone,
+            onToneSelected = onToneChange,
+            modifier = Modifier.padding(bottom = 8.dp).fillMaxWidth(0.9f).align(Alignment.CenterHorizontally)
+        )
+        
+        // Image Preview if attached
+        if (selectedImage != null) {
+            Box(modifier = Modifier.padding(start = 12.dp, bottom = 8.dp)) {
+                AsyncImage(
+                    model = selectedImage,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                IconButton(
+                    onClick = onClearImage,
+                    modifier = Modifier.size(20.dp).align(Alignment.TopEnd).background(Color.Black.copy(0.5f), CircleShape)
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+                }
+            }
+        }
 
-        // ── Tone Chips ──
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 4.dp)
         ) {
-            Text(
-                "Tone ",
-                color = TextMuted,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(Modifier.width(4.dp))
-            AiTone.entries.forEach { tone ->
-                val selected = selectedTone == tone
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 3.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .then(
-                            if (selected) Modifier.background(
-                                Brush.horizontalGradient(listOf(AccentPrimary, AccentSecond)),
-                                RoundedCornerShape(20.dp)
-                            ).coloredShadow(AccentPrimary, 20.dp, 10.dp)
-                            else Modifier
-                                .background(BgSurface, RoundedCornerShape(20.dp))
-                                .border(0.5.dp, ChipBorder, RoundedCornerShape(20.dp))
-                        )
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { onToneChange(tone) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        tone.displayName,
-                        fontSize = 11.sp,
-                        color = if (selected) Color.White else TextSecondary,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
-                    )
-                }
+            IconButton(onClick = onPickImage) {
+                Icon(Icons.Default.CameraAlt, contentDescription = null, tint = TextSecondary)
             }
-        }
-
-        // ── Image Preview ──
-        AnimatedVisibility(
-            visible = selectedImage != null,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
-        ) {
-            Box(
-                modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(1.dp, AccentPrimary.copy(0.3f), RoundedCornerShape(12.dp))
-                ) {
-                    AsyncImage(
-                        model = selectedImage,
-                        contentDescription = "Attached image",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .align(Alignment.TopEnd)
-                        .offset(x = 6.dp, y = (-6).dp)
-                        .background(BgSurface, CircleShape)
-                        .border(0.5.dp, ChipBorder, CircleShape)
-                        .clickable(onClick = onClearImage),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Remove image",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(11.dp)
-                    )
-                }
-            }
-        }
-
-        // ── Text Field Row ──
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            // Attach button
-            IconButton(
-                onClick = onPickImage,
-                modifier = Modifier
-                    .size(42.dp)
-                    .align(Alignment.CenterVertically)
-            ) {
+            
+            IconButton(onClick = onMicClick) {
+                val isListening = voiceState is VoiceState.Listening
                 Icon(
-                    Icons.Default.AttachFile,
-                    contentDescription = "Attach image",
-                    tint = TextSecondary,
-                    modifier = Modifier.size(20.dp)
+                    if (isListening) Icons.Default.Stop else Icons.Default.Mic,
+                    contentDescription = null,
+                    tint = if (isListening) Color.Red else TextSecondary
                 )
             }
 
-            // Mic Button with pulse
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(42.dp).align(Alignment.CenterVertically)) {
-                if (isListening) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .scale(micScale)
-                            .background(AccentPrimary.copy(alpha = 0.2f), CircleShape)
-                    )
-                }
-                IconButton(onClick = onMicClick) {
-                    Icon(
-                        imageVector = if (isListening) Icons.Default.Stop else Icons.Default.Mic,
-                        contentDescription = "Voice Input",
-                        tint = if (isListening) Color.Red else TextSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            // Text field
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 4.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(BgInput)
-                    .border(
-                        0.5.dp,
-                        if (text.isNotBlank()) AccentPrimary.copy(0.3f) else ChipBorder,
-                        RoundedCornerShape(20.dp)
-                    )
-            ) {
-                TextField(
-                    value = text,
-                    onValueChange = onTextChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = {
-                        Text(
-                            if (isListening) "Listening..." else "Ask Sathi anything…",
-                            color = TextMuted,
-                            fontSize = 14.sp
-                        )
-                    },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        cursorColor = AccentPrimary
-                    ),
-                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp, lineHeight = 20.sp),
-                    maxLines = 5
-                )
-            }
-
-            Spacer(Modifier.width(4.dp))
-
-            // Send button
-            val sendScale by animateFloatAsState(
-                targetValue = if (canSend) 1f else 0.85f,
-                animationSpec = spring(dampingRatio = 0.6f),
-                label = "sendScale"
+            TextField(
+                value = text,
+                onValueChange = onTextChange,
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Ask Sathi...", color = TextMuted) },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White
+                ),
+                maxLines = 4
             )
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .scale(sendScale)
-                    .then(
-                        if (canSend) Modifier.coloredShadow(AccentPrimary, 22.dp, 12.dp)
-                        else Modifier
-                    )
-                    .background(
-                        brush = if (canSend)
-                            Brush.radialGradient(listOf(AccentPrimary, AccentSecond.copy(0.8f)))
-                        else
-                            Brush.radialGradient(listOf(BgSurface, BgSurface)),
-                        shape = CircleShape
-                    )
-                    .clip(CircleShape)
-                    .clickable(enabled = canSend, onClick = onSend),
-                contentAlignment = Alignment.Center
+
+            FloatingActionButton(
+                onClick = onSend,
+                containerColor = AccentPrimary,
+                contentColor = Color.White,
+                shape = CircleShape,
+                modifier = Modifier.size(44.dp),
+                elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp)
             ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "Send",
-                    tint = if (canSend) Color.White else TextMuted,
-                    modifier = Modifier.size(18.dp)
-                )
+                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(20.dp))
             }
         }
-
-        // Bottom safe area padding
-        Spacer(Modifier.height(4.dp))
     }
 }
