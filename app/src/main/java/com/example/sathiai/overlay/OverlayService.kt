@@ -30,6 +30,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.example.sathiai.network.ChatRequest
 import com.example.sathiai.network.Message
 import com.example.sathiai.network.RetrofitInstance
+import com.example.sathiai.network.Secrets
 import com.example.sathiai.services.ScreenAnalyzer
 import com.example.sathiai.services.ScreenReaderService
 import com.example.sathiai.ui.components.PremiumOverlayUI
@@ -384,7 +385,7 @@ class OverlayService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStat
                     messages = chatHistory.toList()
                 )
                 val response = RetrofitInstance.api.sendMessage(
-                    token = "Bearer YOUR_API_KEY",
+                    token = "Bearer ${Secrets.GROQ_API_KEY}",
                     request = request
                 )
                 val reply = response.choices.firstOrNull()?.message?.content?.toString() ?: "No response"
