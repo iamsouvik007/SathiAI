@@ -1,6 +1,6 @@
 # SathiAI 🚀
 
-SathiAI is a futuristic Android AI assistant built using Kotlin, Jetpack Compose, MVVM, Room Database, and Groq LLM APIs.
+SathiAI is an Android AI assistant built using Kotlin, Jetpack Compose, MVVM, Room Database, and Groq LLM APIs.
 
 Unlike normal chatbot apps, SathiAI works both as a full AI chat application and as an on-screen floating AI copilot using overlay + accessibility services.
 
@@ -8,9 +8,9 @@ The goal of this project is to create a production-level mobile AI assistant exp
 
 ---
 
-# ✨ Features
+#  Features
 
-## 🤖 AI Chat Assistant
+## AI Chat Assistant
 
 * Human-like AI conversations
 * Groq API integration
@@ -23,7 +23,7 @@ The goal of this project is to create a production-level mobile AI assistant exp
 
 ---
 
-## 💬 Multi-Chat System
+##  Multi-Chat System
 
 * Conversation history
 * Create new chats
@@ -34,7 +34,7 @@ The goal of this project is to create a production-level mobile AI assistant exp
 
 ---
 
-## 🧠 Smart Memory
+##  Smart Memory
 
 * Chat history persistence
 * Context-aware conversations
@@ -42,7 +42,7 @@ The goal of this project is to create a production-level mobile AI assistant exp
 
 ---
 
-## 🪄 Overlay Quickball Assistant
+##  Overlay Quickball Assistant
 
 * Floating AI assistant over any app
 * Quick access popup assistant
@@ -53,7 +53,7 @@ The goal of this project is to create a production-level mobile AI assistant exp
 
 ---
 
-## 👀 Screen Reading / Analyze Screen
+##  Screen Reading / Analyze Screen
 
 Using AccessibilityService:
 
@@ -69,7 +69,7 @@ Using AccessibilityService:
 
 ---
 
-## 🎤 Voice-to-Text Input
+##  Voice-to-Text Input
 
 * Speech recognition support
 * Convert voice → chat input
@@ -87,7 +87,7 @@ Using AccessibilityService:
 
 ---
 
-## 🎨 Premium UI/UX
+##  Premium UI/UX
 
 * Jetpack Compose UI
 * Futuristic dark design
@@ -124,25 +124,6 @@ Using AccessibilityService:
 * Llama 3.3 70B
 
 ---
-
-# 🔑 API Keys (No Secrets in Git)
-
-This project reads API keys from `local.properties` (recommended for local dev) or from environment variables in CI.
-
-Add the following to your root `local.properties` (do NOT commit it):
-
-```properties
-GROQ_API_KEY=your_groq_key_here
-NVIDIA_API_KEY=your_nvidia_key_here
-```
-
-Or set environment variables:
-
-- `GROQ_API_KEY`
-- `NVIDIA_API_KEY`
-
-These values are exposed to the app via `BuildConfig.GROQ_API_KEY` and `BuildConfig.NVIDIA_API_KEY`.
-
 ## Android Services
 
 * AccessibilityService
@@ -171,7 +152,7 @@ com.example.sathiai
 
 ---
 
-# ⚡ Current Major Features
+#  Current Major Features
 
 * AI chat
 * Overlay assistant
@@ -184,7 +165,7 @@ com.example.sathiai
 
 ---
 
-# 🚧 Planned Features
+#  Planned Features
 
 * Streaming AI responses
 * PDF understanding
@@ -196,14 +177,7 @@ com.example.sathiai
 * Cross-app contextual AI
 
 ---
-
-# 📸 Screenshots
-
-(Add your screenshots here)
-
----
-
-# 🔐 Permissions Used
+#  Permissions Used
 
 ## Overlay Permission
 
@@ -223,7 +197,7 @@ Used for image-based AI interaction.
 
 ---
 
-# 🧪 Status
+#  Status
 
 Currently under active development.
 
@@ -241,30 +215,7 @@ This project is focused on:
 * Accessibility-powered AI workflows
 * Modern AI UX systems
 
----
 
-# 👨‍💻 Developer
-
-Built by Souvik (Vik)
-
-Passionate about:
-
-* AI Engineering
-* Android Development
-* Human-centered AI UX
-* Intelligent mobile assistants
-
----
-
-# ⭐ Support
-
-If you like this project:
-
-* Star the repository
-* Share feedback
-* Contribute ideas
-
----
 
 # 📜 License
 
