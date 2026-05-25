@@ -132,7 +132,7 @@ Using AccessibilityService:
 
 ---
 
-# 📂 Project Structure
+#  Project Structure
 
 ```bash
 com.example.sathiai
@@ -215,8 +215,3 @@ This project is focused on:
 * Accessibility-powered AI workflows
 * Modern AI UX systems
 
-
-
-# 📜 License
-
-MIT License
